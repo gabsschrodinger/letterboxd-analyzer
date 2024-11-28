@@ -162,6 +162,11 @@ def scrape_films_details(df_film, username):
     movies_theme = {}
     movies_theme['id'] = []
     movies_theme['theme'] = []
+
+    movies_country = {}
+    movies_country['id'] = []
+    movies_country['country'] = []
+
     progress = 0
     bar = st.progress(progress)
     for link in df_film['link']:
@@ -226,6 +231,14 @@ def scrape_films_details(df_film, username):
                             movies_theme['id'].append(id_movie)
                             movies_theme['theme'].append(theme.get_text().strip())
 
+            # finding the country
+            if (soup_movie.find('div', {'id':'tab-details'}) != None):
+                if ('Countr' in str(soup_movie.find('div', {'id':'tab-details'}))):
+                    for country in soup_movie.find('div', {'id':'tab-details'}).find('h3', string=lambda text: text and "Countr" in text).find_next_sibling('div').findAll('a'):
+                        if country.get_text().strip() != 'Show All…':
+                            movies_country['id'].append(id_movie)
+                            movies_country['country'].append(country.get_text().strip())
+
         bar.progress(progress/len(df_film))
     df_rating = pd.DataFrame(movies_rating)
     df_rating['decade'] = df_rating.apply(lambda row: decade_year(int(row['year'])), axis=1)
@@ -233,4 +246,5 @@ def scrape_films_details(df_film, username):
     df_director = pd.DataFrame(movies_director)
     df_genre = pd.DataFrame(movies_genre)
     df_theme = pd.DataFrame(movies_theme)
-    return df_rating, df_actor, df_director, df_genre, df_theme
+    df_country = pd.DataFrame(movies_country)
+    return df_rating, df_actor, df_director, df_genre, df_theme, df_country

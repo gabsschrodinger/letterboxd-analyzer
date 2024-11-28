@@ -3,7 +3,7 @@ from htbuilder import div, big, h2, styles
 from htbuilder.units import rem
 import altair as alt
 import pandas as pd
-from deployment import scrape_films_details, scrape_films, DOMAIN, classify_popularity, classify_likeability, classify_runtime
+from utilities import scrape_films_details, scrape_films, DOMAIN, classify_popularity, classify_likeability, classify_runtime
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler
 
@@ -14,7 +14,12 @@ if 'sidebar_state' not in st.session_state:
 
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
 css_file = current_dir / "styles" / "main.css"
-st.set_page_config(page_icon="📽️", page_title="Letterboxd Analysis", layout='wide', initial_sidebar_state=st.session_state.sidebar_state)
+st.set_page_config(
+    page_icon="📽️",
+    page_title="Letterboxd Analysis",
+    layout='wide',
+    initial_sidebar_state=st.session_state.sidebar_state,
+)
 with open(css_file) as f:
     st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
@@ -25,16 +30,6 @@ selected_sect = st.sidebar.selectbox('Choose mode', sections)
 if selected_sect == sections[0]:
     st.title('📽️ Letterboxd Profile Analyzer')
     st.write('See how you rate your movies, what movies you like, the genres, the actors and directors of those movies 🍿.')
-    with st.expander("ℹ️ What will this app do? (Updated 2023/09/02)"):
-        st.markdown("""
-        - Scrape your rated movies
-        - Scrape your rated movies' details
-        - Analyze and visualize those movies
-        """)
-        st.markdown("""
-        ⚠️ Note: It takes approximately 1 seconds to scrape details from one movie, so it will take some minutes to process
-        especially when you have rated many movies.
-        """)
 
     username = st.text_input('Letterboxd Username')
     row_button = st.columns((6,1,1,6))
@@ -44,7 +39,7 @@ if selected_sect == sections[0]:
     df_film = scrape_films(username)
     df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
     st.write("You have {0} movies to scrape".format(len(df_film)))
-    df_rating, df_actor, df_director, df_genre, df_theme = scrape_films_details(df_film, username)
+    df_rating, df_actor, df_director, df_genre, df_theme, df_country = scrape_films_details(df_film, username)
 
     st.write("---")
     st.markdown("<h1 style='text-align:center;'>👤 {0}'s Profile Analysis</h1>".format(username), unsafe_allow_html=True)
@@ -756,4 +751,73 @@ if selected_sect == sections[0]:
             df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'theme'],
             df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'theme'],
             df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'theme']
+                   ))
+
+    df_country_merged = pd.merge(df_film, df_country, left_on='id', right_on='id')
+
+    df_temp = df_country['country'].value_counts().reset_index()
+    df_country_merged['rating'] = df_country_merged['rating'].astype(float)
+    df_temp_2 = df_country_merged.groupby(['country']).agg({'liked':'sum', 'rating':'mean'})
+    df_temp_2 = df_temp_2.reset_index()
+    df_temp = pd.merge(df_temp_2, df_temp, left_on='country', right_on='country')
+    df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
+    scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
+    df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
+    df_weighted = pd.merge(df_temp[['country']], df_weighted, left_index=True, right_index=True)
+    df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
+    n_country = df_temp.iloc[min(19, len(df_temp) - 1)]['count']
+    df_temp = df_temp[df_temp['count']>=n_country]
+
+    st.write("")
+    st.subheader("Top countries")
+    row_country = st.columns((2,1))
+    with row_country[0]:
+        st.write("")
+        base = alt.Chart(df_country_merged[df_country_merged['country'].isin(df_temp['country'])]).encode(
+                alt.X("country", sort=df_temp['country'].tolist(), axis=alt.Axis(labelAngle=90))
+            )
+
+        area = base.mark_bar(tooltip=True).encode(
+            alt.Y('count()',
+                axis=alt.Axis(title='Count of Records')),
+                color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+        )
+        line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
+            alt.X("country", sort=df_temp['country'].tolist(), axis=alt.Axis(labelAngle=90)),
+            alt.Y('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+            color=alt.Color(value="#40bcf4"),
+        )
+        st.altair_chart(alt.layer(area, line).resolve_scale(
+            y = 'independent'
+        ),
+        use_container_width=True
+        )
+    with row_country[1]:
+        liked = ""
+        if (df_temp['liked'].max() != 0):
+            if df_temp[df_temp['liked']==df_temp['liked'].max()]['country'].values[0]==df_temp[df_temp['count']==df_temp['count'].max()]['country'].values[0]:
+                liked = liked = "Your most watched and liked country is **{}**.".format(
+                    df_temp[df_temp['liked']==df_temp['liked'].max()]['country'].values[0])
+            else:
+                liked = "Your most liked country is **{}**.".format(
+                    df_temp[df_temp['liked']==df_temp['liked'].max()]['country'].values[0])
+        ratings = """
+        You don't seem to enjoy movies from **{}** since you rated it the lowest. Conversely, you gave relatively high ratings on movies from **{}**.
+        """.format(df_temp[df_temp['rating']==df_temp['rating'].min()]['country'].values[0],
+                   df_temp[df_temp['rating']==df_temp['rating'].max()]['country'].values[0])
+
+        st.markdown("{} {}".format(liked, ratings))
+        st.markdown("""
+        Based on standardized calculations:
+        1. {}
+        2. {}
+        3. {}
+        4. {}
+        5. {}
+        """.format(
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[0,'country'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[1,'country'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'country'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'country'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'country']
                    ))

@@ -167,6 +167,10 @@ def scrape_films_details(df_film, username):
     movies_country['id'] = []
     movies_country['country'] = []
 
+    movies_language = {}
+    movies_language['id'] = []
+    movies_language['language'] = []
+
     progress = 0
     bar = st.progress(progress)
     for link in df_film['link']:
@@ -231,13 +235,22 @@ def scrape_films_details(df_film, username):
                             movies_theme['id'].append(id_movie)
                             movies_theme['theme'].append(theme.get_text().strip())
 
-            # finding the country
+            # finding the countries
             if (soup_movie.find('div', {'id':'tab-details'}) != None):
                 if ('Countr' in str(soup_movie.find('div', {'id':'tab-details'}))):
                     for country in soup_movie.find('div', {'id':'tab-details'}).find('h3', string=lambda text: text and "Countr" in text).find_next_sibling('div').findAll('a'):
                         if country.get_text().strip() != 'Show All…':
                             movies_country['id'].append(id_movie)
                             movies_country['country'].append(country.get_text().strip())
+
+            # finding the languages
+            if (soup_movie.find('div', {'id': 'tab-details'}) != None):
+                if ('Language' in str(soup_movie.find('div', {'id': 'tab-details'}))):
+                    for language in soup_movie.find('div', {'id': 'tab-details'}).find('h3', string=lambda
+                            text: text and "Language" in text).find_next_sibling('div').findAll('a'):
+                        if language.get_text().strip() != 'Show All…':
+                            movies_language['id'].append(id_movie)
+                            movies_language['language'].append(language.get_text().strip())
 
         bar.progress(progress/len(df_film))
     df_rating = pd.DataFrame(movies_rating)
@@ -247,4 +260,6 @@ def scrape_films_details(df_film, username):
     df_genre = pd.DataFrame(movies_genre)
     df_theme = pd.DataFrame(movies_theme)
     df_country = pd.DataFrame(movies_country)
-    return df_rating, df_actor, df_director, df_genre, df_theme, df_country
+    df_language = pd.DataFrame(movies_language)
+
+    return df_rating, df_actor, df_director, df_genre, df_theme, df_country, df_language

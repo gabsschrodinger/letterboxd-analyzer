@@ -39,7 +39,7 @@ if selected_sect == sections[0]:
     df_film = scrape_films(username)
     df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
     st.write("You have {0} movies to scrape".format(len(df_film)))
-    df_rating, df_actor, df_director, df_genre, df_theme, df_country = scrape_films_details(df_film, username)
+    df_rating, df_actor, df_director, df_genre, df_theme, df_country, df_language = scrape_films_details(df_film, username)
 
     st.write("---")
     st.markdown("<h1 style='text-align:center;'>👤 {0}'s Profile Analysis</h1>".format(username), unsafe_allow_html=True)
@@ -820,4 +820,73 @@ if selected_sect == sections[0]:
             df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'country'],
             df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'country'],
             df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'country']
+                   ))
+
+    df_language_merged = pd.merge(df_film, df_language, left_on='id', right_on='id')
+
+    df_temp = df_language['language'].value_counts().reset_index()
+    df_language_merged['rating'] = df_language_merged['rating'].astype(float)
+    df_temp_2 = df_language_merged.groupby(['language']).agg({'liked':'sum', 'rating':'mean'})
+    df_temp_2 = df_temp_2.reset_index()
+    df_temp = pd.merge(df_temp_2, df_temp, left_on='language', right_on='language')
+    df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
+    scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
+    df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
+    df_weighted = pd.merge(df_temp[['language']], df_weighted, left_index=True, right_index=True)
+    df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
+    n_language = df_temp.iloc[min(19, len(df_temp) - 1)]['count']
+    df_temp = df_temp[df_temp['count']>=n_language]
+
+    st.write("")
+    st.subheader("Top languages")
+    row_language = st.columns((2,1))
+    with row_language[0]:
+        st.write("")
+        base = alt.Chart(df_language_merged[df_language_merged['language'].isin(df_temp['language'])]).encode(
+                alt.X("language", sort=df_temp['language'].tolist(), axis=alt.Axis(labelAngle=90))
+            )
+
+        area = base.mark_bar(tooltip=True).encode(
+            alt.Y('count()',
+                axis=alt.Axis(title='Count of Records')),
+                color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+        )
+        line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
+            alt.X("language", sort=df_temp['language'].tolist(), axis=alt.Axis(labelAngle=90)),
+            alt.Y('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+            color=alt.Color(value="#40bcf4"),
+        )
+        st.altair_chart(alt.layer(area, line).resolve_scale(
+            y = 'independent'
+        ),
+        use_container_width=True
+        )
+    with row_language[1]:
+        liked = ""
+        if (df_temp['liked'].max() != 0):
+            if df_temp[df_temp['liked']==df_temp['liked'].max()]['language'].values[0]==df_temp[df_temp['count']==df_temp['count'].max()]['language'].values[0]:
+                liked = liked = "Your most watched and liked language is **{}**.".format(
+                    df_temp[df_temp['liked']==df_temp['liked'].max()]['language'].values[0])
+            else:
+                liked = "Your most liked language is **{}**.".format(
+                    df_temp[df_temp['liked']==df_temp['liked'].max()]['language'].values[0])
+        ratings = """
+        You don't seem to enjoy movies in **{}** since you rated it the lowest. Conversely, you gave relatively high ratings on movies in **{}**.
+        """.format(df_temp[df_temp['rating']==df_temp['rating'].min()]['language'].values[0],
+                   df_temp[df_temp['rating']==df_temp['rating'].max()]['language'].values[0])
+
+        st.markdown("{} {}".format(liked, ratings))
+        st.markdown("""
+        Based on standardized calculations:
+        1. {}
+        2. {}
+        3. {}
+        4. {}
+        5. {}
+        """.format(
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[0,'language'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[1,'language'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'language'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'language'],
+            df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'language']
                    ))

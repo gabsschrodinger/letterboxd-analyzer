@@ -1,4 +1,4 @@
-# Letterboxd Profile Analyzer, Friends Ranker, and Movie Recommendations
+# Letterboxd Profile Analyzer
 A Streamlit app where you can identify your movie-watching behavior by scraping your Letterboxd data.
 
 ## Profile Analyzer

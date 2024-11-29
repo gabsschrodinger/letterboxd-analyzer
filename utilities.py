@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import numpy as np
 import streamlit as st
+from pandas import DataFrame
 
 DOMAIN = "https://letterboxd.com"
 
@@ -339,3 +340,22 @@ def scrape_films_details(df_film, username):
     df_language = pd.DataFrame(movies_language)
 
     return df_rating, df_actor, df_director, df_genre, df_theme, df_country, df_language
+
+def add_standardized_calculations(df_weighted: DataFrame, field: str, default_num: int) -> None:
+    actual_num = min(default_num, len(df_weighted))
+
+    initial_content = """
+    Based on standardized calculations:
+    """
+
+    for i in range(actual_num):
+        initial_content += f"\n{i + 1}. " + "{}"
+
+    list_items = [
+        df_weighted.sort_values("score", ascending=False)
+        .reset_index(drop=True)
+        .loc[i, field]
+        for i in range(actual_num)
+    ]
+
+    st.markdown(initial_content.format(*list_items))

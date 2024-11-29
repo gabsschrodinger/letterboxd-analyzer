@@ -10,6 +10,7 @@ from utilities import (
     classify_popularity,
     classify_likeability,
     classify_runtime,
+    add_standardized_calculations,
 )
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler
@@ -774,23 +775,7 @@ if selected_sect == sections[0]:
                 )
             )
 
-        num_of_directors = min(5, len(df_weighted))
-
-        initial_content = """
-        Based on standardized calculations:
-        """
-
-        for i in range(num_of_directors):
-            initial_content += f"\n{i + 1}. " + "{}"
-
-        director_args = [
-            df_weighted.sort_values("score", ascending=False)
-            .reset_index(drop=True)
-            .loc[i, "director"]
-            for i in range(num_of_directors)
-        ]
-
-        st.markdown(initial_content.format(*director_args))
+        add_standardized_calculations(df_weighted, "director", 5)
 
     list_weights = []
     movie_ids = df_actor["id"].unique()
@@ -1047,32 +1032,8 @@ if selected_sect == sections[0]:
                 liked,
             )
         )
-        st.markdown(
-            """
-        Based on standardized calculations:
-        1. {}
-        2. {}
-        3. {}
-        4. {}
-        5. {}
-        """.format(
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[0, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[1, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[2, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[3, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[4, "genre"],
-            )
-        )
+
+        add_standardized_calculations(df_weighted, "genre", 5)
 
     df_genre_combination = pd.DataFrame(columns=df_genre_merged.columns)
     for i in range(len(df_temp["genre"].tolist())):
@@ -1276,32 +1237,7 @@ if selected_sect == sections[0]:
             )
 
         st.markdown("{} {} {}".format(top_2, low, high))
-        st.markdown(
-            """
-        Based on standardized calculations:
-        1. {}
-        2. {}
-        3. {}
-        4. {}
-        5. {}
-        """.format(
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[0, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[1, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[2, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[3, "genre"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[4, "genre"],
-            )
-        )
+        add_standardized_calculations(df_weighted, "genre", 5)
 
     df_theme_merged = pd.merge(df_film, df_theme, left_on="id", right_on="id")
 
@@ -1393,32 +1329,7 @@ if selected_sect == sections[0]:
         )
 
         st.markdown("{} {}".format(liked, ratings))
-        st.markdown(
-            """
-        Based on standardized calculations:
-        1. {}
-        2. {}
-        3. {}
-        4. {}
-        5. {}
-        """.format(
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[0, "theme"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[1, "theme"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[2, "theme"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[3, "theme"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[4, "theme"],
-            )
-        )
+        add_standardized_calculations(df_weighted, "theme", 5)
 
     df_country_merged = pd.merge(df_film, df_country, left_on="id", right_on="id")
 
@@ -1514,32 +1425,7 @@ if selected_sect == sections[0]:
         )
 
         st.markdown("{} {}".format(liked, ratings))
-        st.markdown(
-            """
-        Based on standardized calculations:
-        1. {}
-        2. {}
-        3. {}
-        4. {}
-        5. {}
-        """.format(
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[0, "country"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[1, "country"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[2, "country"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[3, "country"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[4, "country"],
-            )
-        )
+        add_standardized_calculations(df_weighted, "country", 5)
 
     df_language_merged = pd.merge(df_film, df_language, left_on="id", right_on="id")
 
@@ -1639,29 +1525,5 @@ if selected_sect == sections[0]:
         )
 
         st.markdown("{} {}".format(liked, ratings))
-        st.markdown(
-            """
-        Based on standardized calculations:
-        1. {}
-        2. {}
-        3. {}
-        4. {}
-        5. {}
-        """.format(
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[0, "language"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[1, "language"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[2, "language"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[3, "language"],
-                df_weighted.sort_values("score", ascending=False)
-                .reset_index(drop=True)
-                .loc[4, "language"],
-            )
-        )
+
+        add_standardized_calculations(df_weighted, "language", 5)

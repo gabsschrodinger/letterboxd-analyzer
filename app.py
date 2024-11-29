@@ -17,34 +17,26 @@ from sklearn.preprocessing import StandardScaler
 
 scaler = StandardScaler()
 
-if "sidebar_state" not in st.session_state:
-    st.session_state.sidebar_state = "collapsed"
-
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
 css_file = current_dir / "styles" / "main.css"
 st.set_page_config(
     page_icon="📽️",
     page_title="Letterboxd Analysis",
     layout="wide",
-    initial_sidebar_state=st.session_state.sidebar_state,
 )
 with open(css_file) as f:
     st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
+st.title("📽️ Letterboxd Profile Analyzer")
+st.write(
+    "See how you rate your movies, what movies you like, the genres, the actors and directors of those movies 🍿."
+)
 
-sections = ["Analyze Profile"]
-selected_sect = st.sidebar.selectbox("Choose mode", sections)
+username = st.text_input("Letterboxd Username")
+row_button = st.columns((6, 1, 1, 6))
+submit = row_button[1].button("Submit")
 
-if selected_sect == sections[0]:
-    st.title("📽️ Letterboxd Profile Analyzer")
-    st.write(
-        "See how you rate your movies, what movies you like, the genres, the actors and directors of those movies 🍿."
-    )
-
-    username = st.text_input("Letterboxd Username")
-    row_button = st.columns((6, 1, 1, 6))
-    submit = row_button[1].button("Submit")
-
+if submit:
     # scraping process
     df_film = scrape_films(username)
     df_film = df_film[df_film["rating"] != -1].reset_index(drop=True)

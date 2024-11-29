@@ -341,7 +341,10 @@ def scrape_films_details(df_film, username):
 
     return df_rating, df_actor, df_director, df_genre, df_theme, df_country, df_language
 
-def add_standardized_calculations(df_weighted: DataFrame, field: str, default_num: int) -> None:
+
+def add_standardized_calculations(
+    df_weighted: DataFrame, field: str, default_num: int
+) -> None:
     actual_num = min(default_num, len(df_weighted))
 
     initial_content = """

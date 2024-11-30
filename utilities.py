@@ -1,3 +1,6 @@
+import io
+import os
+
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
@@ -8,27 +11,36 @@ from pandas import DataFrame
 DOMAIN = "https://letterboxd.com"
 
 
-@st.cache_data
-def transform_ratings(some_str):
-    """
-    transforms raw star rating into float value
-    :param: some_str: actual star rating
-    :rtype: returns the float representation of the given star(s)
-    """
+def fetch_cached_films_as_dataframe():
+    file_id = st.secrets['FILMS_FILE_ID']
+    public_url = f"https://drive.google.com/uc?id={file_id}"
+
+    print(f"public_url: {public_url}")
+
+    # Download the file into memory
+    response = requests.get(public_url)
+    response.raise_for_status()  # Ensure the request was successful
+
+    # Load Parquet file into a Pandas DataFrame
+    parquet_file = io.BytesIO(response.content)
+    return pd.read_parquet(parquet_file, engine="pyarrow")
+
+def transform_ratings(start_str: str) -> float:
     stars = {
-        "★": 1,
-        "★★": 2,
-        "★★★": 3,
-        "★★★★": 4,
-        "★★★★★": 5,
+        "★": 1.0,
+        "★★": 2.0,
+        "★★★": 3.0,
+        "★★★★": 4.0,
+        "★★★★★": 5.0,
         "½": 0.5,
         "★½": 1.5,
         "★★½": 2.5,
         "★★★½": 3.5,
         "★★★★½": 4.5,
     }
+
     try:
-        return stars[some_str]
+        return stars[start_str]
     except:
         return -1
 
@@ -93,8 +105,7 @@ def scrape_films(username):
                     )
                     movies_dict["link"].append(movie.find("div")["data-target-link"])
 
-    df_film = pd.DataFrame(movies_dict)
-    return df_film
+    return pd.DataFrame(movies_dict)
 
 
 @st.cache_data
@@ -109,13 +120,11 @@ def score_index(rating_x, liked_x, rating_y, liked_y):
     return score
 
 
-@st.cache_data
-def decade_year(year):
+def decade_year(year: int) -> str:
     return str(int(year / 10) * 10) + "s"
 
 
-@st.cache_data
-def classify_popularity(watched_by):
+def classify_popularity(watched_by: int) -> str:
     if watched_by <= 10000:
         return "1 - very obscure"
     elif watched_by <= 100000:
@@ -198,6 +207,54 @@ def scrape_films_details(df_film, username):
 
     progress = 0
     bar = st.progress(progress)
+
+    print("loading cached films")
+    cached_films = fetch_cached_films_as_dataframe()
+    cached_films = cached_films[cached_films["id"].isin(df_film["id"])]
+    print(f"cached films loaded successfully. {len(cached_films)} cached records found for user")
+
+    for _, cached_row in cached_films.iterrows():
+        progress = progress + 1
+        print("reading cached details of {} [{}]".format(cached_row["title"], username))
+
+        with st.spinner("scraping details of " + cached_row["title"]):
+            movies_rating["id"].append(cached_row["id"])
+            movies_rating["avg_rating"].append(cached_row["avg_rating"])
+            movies_rating["year"].append(cached_row["year"])
+            movies_rating["watched_by"].append(cached_row["watched_by"])
+            movies_rating["liked_by"].append(cached_row["liked_by"])
+            movies_rating["runtime"].append(cached_row["runtime"])
+
+            for actor in cached_row["actors"]:
+                movies_actor["id"].append(cached_row["id"])
+                movies_actor["actor"].append(actor["actor"])
+                movies_actor["actor_link"].append(actor["actor_link"])
+
+            for director in cached_row["directors"]:
+                movies_director["id"].append(cached_row["id"])
+                movies_director["director"].append(director["director"])
+                movies_director["director_link"].append(director["director_link"])
+
+            for genre in cached_row["genres"]:
+                movies_genre["id"].append(cached_row["id"])
+                movies_genre["genre"].append(genre)
+
+            for theme in cached_row["themes"]:
+                movies_theme["id"].append(cached_row["id"])
+                movies_theme["theme"].append(theme)
+
+            for country in cached_row["countries"]:
+                movies_country["id"].append(cached_row["id"])
+                movies_country["country"].append(country)
+
+            for language in cached_row["languages"]:
+                movies_language["id"].append(cached_row["id"])
+                movies_language["language"].append(language)
+
+            bar.progress(progress / len(df_film))
+
+    df_film = df_film[~df_film['id'].isin(cached_films['id'])]
+
     for link in df_film["link"]:
         progress = progress + 1
         print(

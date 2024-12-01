@@ -7,7 +7,8 @@ from datetime import date
 from pandas import DataFrame
 
 DOMAIN = "https://letterboxd.com"
-USERNAMES = [] # add usernames prior to run the script
+USERNAMES = []  # add usernames prior to run the script
+
 
 def transform_ratings(start_str: str) -> float:
     stars = {
@@ -28,8 +29,10 @@ def transform_ratings(start_str: str) -> float:
     except:
         return -1
 
+
 def decade_year(year: int) -> str:
     return str(int(year / 10) * 10) + "s"
+
 
 def scrape_films(username):
     print("==== SCRAPING FOR USERNAME {} ====".format(username))
@@ -92,6 +95,7 @@ def scrape_films(username):
 
     return pd.DataFrame(movies_dict)
 
+
 def scrape_films_details(df_film):
     df_film = df_film[df_film["rating"] != -1].reset_index(drop=True)
     movies_data = {}
@@ -117,7 +121,11 @@ def scrape_films_details(df_film):
     movies_data["languages"] = []
 
     for link in df_film["link"]:
-        print("scraping details of {}".format(df_film[df_film["link"] == link]["title"].values[0]))
+        print(
+            "scraping details of {}".format(
+                df_film[df_film["link"] == link]["title"].values[0]
+            )
+        )
 
         id_movie = df_film[df_film["link"] == link]["id"].values[0]
         url_movie = DOMAIN + link
@@ -177,7 +185,7 @@ def scrape_films_details(df_film):
                 if actor.get_text().strip() != "Show All…":
                     actor_data = {
                         "actor": actor.get_text().strip(),
-                        "actor_link": actor["href"]
+                        "actor_link": actor["href"],
                     }
                     actors.append(actor_data)
 
@@ -193,7 +201,7 @@ def scrape_films_details(df_film):
             ):
                 director_data = {
                     "director": director.get_text().strip(),
-                    "director_link": director["href"]
+                    "director_link": director["href"],
                 }
                 directors.append(director_data)
 
@@ -205,9 +213,7 @@ def scrape_films_details(df_film):
         if soup_movie.find("div", {"id": "tab-genres"}) != None:
             genres = []
             for genre in (
-                soup_movie.find("div", {"id": "tab-genres"})
-                .find("div")
-                .findAll("a")
+                soup_movie.find("div", {"id": "tab-genres"}).find("div").findAll("a")
             ):
                 genres.append(genre.get_text().strip())
 
@@ -273,6 +279,7 @@ def scrape_films_details(df_film):
 
     return pd.DataFrame(movies_data)
 
+
 today = date.today()
 
 final_df: DataFrame = None
@@ -283,15 +290,17 @@ for username in USERNAMES:
         final_df = scrape_films_details(films_df)
     else:
         new_films_df = scrape_films(username)
-        new_films_df = new_films_df[~new_films_df['id'].isin(final_df['id'])]
+        new_films_df = new_films_df[~new_films_df["id"].isin(final_df["id"])]
         new_final_df = scrape_films_details(new_films_df)
-        new_final_df = new_final_df[~new_final_df['id'].isin(final_df['id'])]
+        new_final_df = new_final_df[~new_final_df["id"].isin(final_df["id"])]
 
         final_df = pd.concat([final_df, new_final_df], ignore_index=True)
 
 
-final_df['last_modified_date'] = today
+final_df["last_modified_date"] = today
 
-final_df.to_parquet(f"cached_films_{today.strftime('%y-%m-%d')}.parquet", engine="pyarrow")
+final_df.to_parquet(
+    f"cached_films_{today.strftime('%y-%m-%d')}.parquet", engine="pyarrow"
+)
 
 print(f"DataFrame saved to cached_films_{today.strftime('%y-%m-%d')}.parquet")

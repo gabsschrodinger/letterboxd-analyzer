@@ -1,5 +1,4 @@
 import io
-import os
 
 from bs4 import BeautifulSoup
 import requests
@@ -12,7 +11,7 @@ DOMAIN = "https://letterboxd.com"
 
 
 def fetch_cached_films_as_dataframe():
-    file_id = st.secrets['FILMS_FILE_ID']
+    file_id = st.secrets["FILMS_FILE_ID"]
     public_url = f"https://drive.google.com/uc?id={file_id}"
 
     print(f"public_url: {public_url}")
@@ -24,6 +23,7 @@ def fetch_cached_films_as_dataframe():
     # Load Parquet file into a Pandas DataFrame
     parquet_file = io.BytesIO(response.content)
     return pd.read_parquet(parquet_file, engine="pyarrow")
+
 
 def transform_ratings(start_str: str) -> float:
     stars = {
@@ -171,6 +171,8 @@ def classify_runtime(runtime):
 @st.cache_data
 def scrape_films_details(df_film, username):
     df_film = df_film[df_film["rating"] != -1].reset_index(drop=True)
+    num_of_films = len(df_film)
+
     movies_rating = {}
     movies_rating["id"] = []
     movies_rating["avg_rating"] = []
@@ -211,7 +213,9 @@ def scrape_films_details(df_film, username):
     print("loading cached films")
     cached_films = fetch_cached_films_as_dataframe()
     cached_films = cached_films[cached_films["id"].isin(df_film["id"])]
-    print(f"cached films loaded successfully. {len(cached_films)} cached records found for user")
+    print(
+        f"cached films loaded successfully. {len(cached_films)} cached records found for user"
+    )
 
     for _, cached_row in cached_films.iterrows():
         progress = progress + 1
@@ -251,9 +255,9 @@ def scrape_films_details(df_film, username):
                 movies_language["id"].append(cached_row["id"])
                 movies_language["language"].append(language)
 
-            bar.progress(progress / len(df_film))
+            bar.progress(progress / num_of_films)
 
-    df_film = df_film[~df_film['id'].isin(cached_films['id'])]
+    df_film = df_film[~df_film["id"].isin(cached_films["id"])]
 
     for link in df_film["link"]:
         progress = progress + 1
@@ -384,7 +388,7 @@ def scrape_films_details(df_film, username):
                                 language.get_text().strip()
                             )
 
-        bar.progress(progress / len(df_film))
+        bar.progress(progress / num_of_films)
     df_rating = pd.DataFrame(movies_rating)
     df_rating["decade"] = df_rating.apply(
         lambda row: decade_year(int(row["year"])), axis=1
